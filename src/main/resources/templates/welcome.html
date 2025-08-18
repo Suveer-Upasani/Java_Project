@@ -1,52 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Welcome</title>
+    <title>Welcome Page & Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
-            text-align: center;
         }
         .container {
+            max-width: 900px;
+            margin: 0 auto;
             background: white;
-            padding: 30px;
+            padding: 20px 40px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 400px;
+            text-align: center;
         }
-        h1 {
-            color: #5cb85c;
-        }
-        p {
-            color: #555;
-            margin-bottom: 20px;
-        }
-        .btn {
+        h1 { color: #333; }
+        a, button {
             display: inline-block;
+            margin-top: 20px;
             padding: 10px 20px;
             background-color: #5cb85c;
             color: white;
             text-decoration: none;
+            border: none;
             border-radius: 4px;
-            transition: background-color 0.3s;
+            cursor: pointer;
         }
-        .btn:hover {
-            background-color: #4cae4c;
+        a:hover, button:hover { background-color: #4cae4c; }
+        .video-container {
+            width: 640px;
+            height: 480px;
+            margin: 20px auto;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
     </style>
+    <script>
+        function startTest() {
+            // 1️⃣ Call Flask monitoring service (already running)
+            fetch('http://127.0.0.1:5005/')
+                .then(response => console.log('Monitoring service active', response))
+                .catch(error => console.error('Error calling monitoring service:', error));
+
+            // 2️⃣ Disable Start Test button
+            const btn = document.getElementById('startBtn');
+            btn.disabled = true;
+            btn.innerText = 'Starting Test...';
+
+            // 3️⃣ Redirect to Spring Boot test page after short delay
+            setTimeout(() => { window.location.href = '/start-test'; }, 500);
+        }
+    </script>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome!</h1>
-        <p>You have successfully logged in. Click below to access the API.</p>
-        <a href="http://127.0.0.1:5005/" class="btn">Start API</a>
+<div class="container">
+    <h1>Welcome!</h1>
+    <p>You have logged in successfully.</p>
+    <a th:href="@{/}">Logout</a>
+    <br>
+    <button id="startBtn" onclick="startTest()">Start Test</button>
+
+    <!-- Embedded Flask live feed -->
+    <div class="video-container">
+        <img src="http://127.0.0.1:5005/video_feed" class="video-feed" alt="Live Camera Feed">
     </div>
+    <p>Live monitoring active during test</p>
+</div>
 </body>
 </html>
