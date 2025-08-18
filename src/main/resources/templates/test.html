@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Java Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f4f4f4; 
+            padding: 20px; 
+        }
+        .container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            max-width: 900px; 
+            margin: auto; 
+            text-align: center; 
+        }
+        h2 { 
+            color: #333; 
+            text-align: center; 
+        }
+        .question { 
+            margin-bottom: 20px; 
+            text-align: left; 
+        }
+        .options label { 
+            display: block; 
+            margin: 5px 0; 
+        }
+        button { 
+            padding: 10px 20px; 
+            background-color: #5cb85c; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        button:hover { 
+            background-color: #4cae4c; 
+        }
+
+        /* Fixed Timer at Top */
+        #timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: red;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            z-index: 1100;
+        }
+
+        /* Fixed Monitoring Window */
+        .video-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 320px;
+            height: 240px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .monitoring-label {
+            position: fixed;
+            bottom: 270px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1001;
+        }
+    </style>
+</head>
+<body>
+<div id="timer">Time Left: 1:30</div>
+
+<div class="container">
+    <h2>Java Test (10 Marks)</h2>
+
+    <!-- Test Form -->
+    <form id="testForm" th:action="@{/submit-test}" method="post">
+        <div th:each="q, iterStat : ${questions}" class="question">
+            <!-- Sequential numbering -->
+            <p><strong th:text="'Q' + (${iterStat.index + 1}) + '. ' + ${q.question}"></strong></p>
+            <div class="options">
+                <label th:each="opt : ${q.options}">
+                    <input type="radio" th:name="'q' + ${iterStat.index}" th:value="${opt}" required>
+                    <span th:text="${opt}"></span>
+                </label>
+            </div>
+        </div>
+        <button type="submit">Submit Test</button>
+    </form>
+</div>
+
+<!-- Floating Flask live feed (always visible) -->
+<div class="monitoring-label">Live Monitoring</div>
+<div class="video-container">
+    <img src="http://127.0.0.1:5005/video_feed" class="video-feed" alt="Live Camera Feed">
+</div>
+
+<script>
+    // Timer: 1 minute 30 seconds (90 seconds)
+    let timeLeft = 90;  
+    const timerDisplay = document.getElementById("timer");
+    const form = document.getElementById("testForm");
+
+    function updateTimer() {
+        let minutes = Math.floor(timeLeft / 60);
+        let seconds = timeLeft % 60;
+        timerDisplay.textContent = "Time Left: " + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            form.submit();  // Auto-submit form
+        }
+        timeLeft--;
+    }
+
+    // Run timer every second
+    const timerInterval = setInterval(updateTimer, 1000);
+    updateTimer();  // Initialize immediately
+
+    // 🚫 Prevent refresh / closing
+    window.onbeforeunload = function () {
+        return "You cannot refresh or leave the test!";
+    };
+
+    // 🚫 Disable back button
+    history.pushState(null, null, location.href);
+    window.onpopstate = function () {
+        history.pushState(null, null, location.href);
+    };
+
+    // 🚫 Block F5 / Ctrl+R / Cmd+R
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "F5" || 
+            (e.ctrlKey && e.key.toLowerCase() === "r") || 
+            (e.metaKey && e.key.toLowerCase() === "r")) {
+            e.preventDefault();
+        }
+    });
+</script>
+
+</body>
+</html>
