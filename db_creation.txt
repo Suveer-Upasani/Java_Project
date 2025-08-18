@@ -1,0 +1,14 @@
+CREATE DATABASE exam_portal;
+USE exam_portal;
+
+CREATE TABLE user (
+    prn VARCHAR(20) PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(50) NOT NULL
+);
+
+INSERT INTO user (prn, username, password) VALUES ('PRN001', 'Suveer', 'test_1001');
+INSERT INTO user (prn, username, password) VALUES ('PRN002', 'Suyash', 'test_1002');
+INSERT INTO user (prn, username, password) VALUES ('PRN003', 'Varad', 'test_1003');
+INSERT INTO user (prn, username, password) VALUES ('PRN004', 'Chaitanya', 'test_1004');
+INSERT INTO user (prn, username, password) VALUES ('PRN005', 'Omkar', 'test_1005');
