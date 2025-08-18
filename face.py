@@ -80,7 +80,7 @@ def generate_frames():
 
 @app.route('/')
 def index():
-    return render_template('test.html')
+    return render_template('flask_test.html')
 
 @app.route('/video_feed')
 def video_feed():
