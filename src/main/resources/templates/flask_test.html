@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Proctoring System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .video-container {
+            width: 640px;
+            height: 480px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .info {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 600px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .status-label {
+            font-weight: bold;
+        }
+
+        .status-value {
+            color: #333;
+        }
+
+        .violation {
+            color: red;
+        }
+
+        .normal {
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Exam Proctoring System</h1>
+    <div class="video-container">
+        <img src="/video_feed" class="video-feed" alt="Camera Feed">
+    </div>
+
+    <div class="status-panel">
+        <div class="status-item">
+            <span class="status-label">Monitoring Status:</span>
+            <span class="status-value" id="monitoring-status">Active</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Violations:</span>
+            <span class="status-value" id="violation-count">0/3</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Current Status:</span>
+            <span class="status-value" id="current-status">Correct</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Last Violation:</span>
+            <span class="status-value" id="last-violation">None</span>
+        </div>
+    </div>
+
+    <div class="info">
+        Real-time proctoring system - Monitoring is automatically active
+    </div>
+
+    <script>
+        // Update status panel periodically
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('monitoring-status').textContent =
+                        data.monitoring_active ? 'Active' : 'Inactive';
+                    document.getElementById('monitoring-status').className =
+                        data.monitoring_active ? 'status-value normal' : 'status-value violation';
+
+                    document.getElementById('violation-count').textContent =
+                        `${data.total_violations}/${data.max_violations}`;
+                    document.getElementById('violation-count').className =
+                        data.total_violations < data.max_violations ? 'status-value normal' : 'status-value violation';
+
+                    document.getElementById('current-status').textContent =
+                        data.test_terminated ? 'TERMINATED' :
+                            (data.current_violation_type ? 'Incorrect' : 'Correct');
+                    document.getElementById('current-status').className =
+                        data.current_violation_type || data.test_terminated ? 'status-value violation' : 'status-value normal';
+
+                    document.getElementById('last-violation').textContent =
+                        data.current_violation_type || 'None';
+                })
+                .catch(error => console.error('Error fetching status:', error));
+        }
+
+        // Update every second
+        setInterval(updateStatus, 1000);
+        updateStatus(); // Initial update
+    </script>
+</body>
+
+</html>
