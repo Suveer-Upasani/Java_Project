@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpSession;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.regex.Pattern;
 
 @Controller
 public class Hello {
@@ -48,13 +47,11 @@ public class Hello {
                          @RequestParam String prn,
                          Model model) {
 
-        // Validate PRN: 10 digits
         if (!prn.matches("\\d{10}")) {
             model.addAttribute("error", "PRN must be exactly 10 digits.");
             return "signup";
         }
 
-        // Validate email
         if (!email.endsWith("@despu.edu.in")) {
             model.addAttribute("error", "Email must end with @despu.edu.in");
             return "signup";
@@ -75,12 +72,15 @@ public class Hello {
     public String login(@RequestParam String username,
                         @RequestParam String password,
                         @RequestParam String prn,
-                        Model model) {
+                        Model model,
+                        HttpSession session) {
 
         String sql = "SELECT COUNT(*) FROM users WHERE username = ? AND password = ? AND prn = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, username, password, prn);
 
         if (count != null && count > 0) {
+            session.setAttribute("username", username);
+            session.setAttribute("prn", prn);
             return "redirect:/welcome";
         } else {
             model.addAttribute("error", "Invalid login credentials!");
@@ -93,13 +93,26 @@ public class Hello {
         return "welcome";
     }
 
-    // --- Test Page logic remains unchanged ---
+    // --- Test Page ---
     @GetMapping("/start-test")
     public String startTest(Model model, HttpSession session) {
         currentTestViolations = 0;
         testTerminated = false;
         violations.clear();
 
+        List<Question> questions = generateQuestions();
+        Collections.shuffle(questions, new Random());
+        for (Question q : questions) Collections.shuffle(q.getOptions(), new Random());
+
+        Map<Integer, String> correctAnswers = new HashMap<>();
+        for (int i = 0; i < questions.size(); i++) correctAnswers.put(i, questions.get(i).getAnswer());
+        session.setAttribute("correctAnswers", correctAnswers);
+
+        model.addAttribute("questions", questions);
+        return "test";
+    }
+
+    private List<Question> generateQuestions() {
         List<Question> questions = new ArrayList<>();
         questions.add(new Question("Which keyword is used to inherit a class in Java?",
                 Arrays.asList("extends", "implements", "inherits", "super"), "extends"));
@@ -121,34 +134,37 @@ public class Hello {
                 Arrays.asList("2 bytes", "4 bytes", "8 bytes", "Depends on platform"), "4 bytes"));
         questions.add(new Question("Which loop executes at least once?",
                 Arrays.asList("for", "while", "do-while", "foreach"), "do-while"));
-
-        Collections.shuffle(questions, new Random());
-        for (Question q : questions) Collections.shuffle(q.getOptions(), new Random());
-
-        Map<Integer, String> correctAnswers = new HashMap<>();
-        for (int i = 0; i < questions.size(); i++) correctAnswers.put(i, questions.get(i).getAnswer());
-        session.setAttribute("correctAnswers", correctAnswers);
-
-        model.addAttribute("questions", questions);
-        return "test";
+        return questions;
     }
 
     @PostMapping("/submit-test")
     public String submitTest(@RequestParam Map<String, String> allParams,
                              HttpSession session, Model model) {
+
         @SuppressWarnings("unchecked")
         Map<Integer, String> correctAnswers = (Map<Integer, String>) session.getAttribute("correctAnswers");
 
-        int score = 0;
-        int total = correctAnswers.size();
-        for (int i = 0; i < total; i++) {
-            String chosen = allParams.get("q" + i);
-            String correct = correctAnswers.get(i);
-            if (chosen != null && chosen.equals(correct)) score++;
+        String username = (String) session.getAttribute("username");
+        String prn = (String) session.getAttribute("prn");
+
+        if (username == null || prn == null) {
+            model.addAttribute("error", "Session expired or user not logged in!");
+            return "login";
         }
 
-        String sql = "INSERT INTO test_results (score, total, violations, submitted_at, terminated) VALUES (?, ?, ?, ?, ?)";
-        jdbcTemplate.update(sql, score, total, currentTestViolations, LocalDateTime.now().toString(), testTerminated);
+        int score = 0;
+        int total = correctAnswers != null ? correctAnswers.size() : 0;
+        if (correctAnswers != null) {
+            for (int i = 0; i < total; i++) {
+                String chosen = allParams.get("q" + i);
+                String correct = correctAnswers.get(i);
+                if (chosen != null && chosen.equals(correct)) score++;
+            }
+        }
+
+        String sql = "INSERT INTO test_results (username, prn, score, total, violations, submitted_at, terminated) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        jdbcTemplate.update(sql, username, prn, score, total, currentTestViolations,
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), testTerminated);
 
         model.addAttribute("score", score);
         model.addAttribute("total", total);
@@ -157,10 +173,11 @@ public class Hello {
         return "result";
     }
 
-    // --- Violation API endpoints remain unchanged ---
+    // --- Violation API ---
     @PostMapping("/api/violation")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> recordViolation(@RequestBody ViolationRequest request) {
+    public ResponseEntity<Map<String, Object>> recordViolation(@RequestBody ViolationRequest request,
+                                                               HttpSession session) {
         currentTestViolations = request.getTotalViolations();
         ViolationRecord violation = new ViolationRecord();
         violation.setType(request.getType());
@@ -168,8 +185,13 @@ public class Hello {
         violation.setReadableTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
         violations.add(violation);
 
-        String sql = "INSERT INTO violations (type, timestamp, readable_time) VALUES (?, ?, ?)";
-        jdbcTemplate.update(sql, request.getType(), request.getTimestamp(), violation.getReadableTime());
+        String username = (String) session.getAttribute("username");
+        String prn = (String) session.getAttribute("prn");
+
+        if (username != null && prn != null) {
+            String sql = "INSERT INTO violations (username, prn, type, timestamp, readable_time) VALUES (?, ?, ?, ?, ?)";
+            jdbcTemplate.update(sql, username, prn, request.getType(), request.getTimestamp(), violation.getReadableTime());
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("status", "violation_recorded");
@@ -212,7 +234,7 @@ public class Hello {
     }
 }
 
-// --- Question & Violation classes remain unchanged ---
+// --- Question & Violation Classes ---
 class Question {
     private final String question;
     private final List<String> options;
