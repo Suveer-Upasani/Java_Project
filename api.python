@@ -1,0 +1,414 @@
+
+
+from flask import Flask, render_template, Response, jsonify
+import cv2
+import mediapipe as mp
+import numpy as np
+from collections import deque
+import time
+import threading
+import pygame
+import requests
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)  # Enable CORS for Java backend communication
+
+# --- MediaPipe setup ---
+mp_face_mesh = mp.solutions.face_mesh
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
+
+# --- Initialize camera ---
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+# --- Detection models ---
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=False,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
+
+pose = mp_pose.Pose(
+    static_image_mode=False,
+    model_complexity=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
+
+# --- Parameters ---
+MOVEMENT_THRESHOLD = 8
+GAZE_THRESHOLD = 0.25
+HEAD_TILT_THRESHOLD = 15
+MIN_VISIBLE_POSE_LANDMARKS = 10
+ALERT_DURATION = 30
+EXPRESSION_CONSEC_FRAMES = 15
+MAR_THRESHOLD = 0.35
+SCORE_THRESHOLD = 2
+EYE_DIRECTION_THRESHOLD = 0.15
+VIOLATION_FRAMES = 90  # ~3 sec at 30 fps
+MAX_VIOLATIONS = 3  # Maximum violations before test termination
+
+# --- Tracking variables ---
+prev_centroid = None
+alert_counter = 0
+expression_counters = {
+    'mouth_open': 0,
+    'looking_away': 0,
+    'multiple_faces': 0,
+    'no_pose': 0,
+    'no_face': 0
+}
+pose_landmarks_history = deque(maxlen=5)
+violation_frames_count = 0
+alert_playing = False
+
+# --- New violation tracking variables ---
+total_violations = 0
+current_violation_type = None
+violation_timestamps = []
+test_terminated = False
+monitoring_active = True  # Start monitoring immediately
+
+# --- Landmarks ---
+LEFT_EYE = [33, 133, 160, 144, 158, 153, 362, 385, 387, 263, 373, 380]
+RIGHT_EYE = [7, 163, 145, 153, 157, 173, 463, 398, 384, 381, 388, 466]
+LIPS = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
+
+# --- Initialize pygame mixer for sound ---
+pygame.mixer.init()
+try:
+    siren_sound = pygame.mixer.Sound("siren.wav")  # Place siren.wav in same directory
+    siren_sound.set_volume(1.0)
+except:
+    siren_sound = None
+    print("Warning: siren.wav not found. Audio alerts disabled.")
+
+# --- Utility functions ---
+def calculate_ear(eye_points, landmarks, frame_width, frame_height):
+    eye_coords = np.array([(landmarks.landmark[pt].x * frame_width, landmarks.landmark[pt].y * frame_height) for pt in eye_points])
+    vert1 = np.linalg.norm(eye_coords[1] - eye_coords[5])
+    vert2 = np.linalg.norm(eye_coords[2] - eye_coords[4])
+    horiz = np.linalg.norm(eye_coords[0] - eye_coords[3])
+    return (vert1 + vert2) / (2.0 * horiz), eye_coords
+
+def calculate_mar(lip_points, landmarks, frame_width, frame_height):
+    lip_coords = np.array([(landmarks.landmark[pt].x * frame_width, landmarks.landmark[pt].y * frame_height) for pt in lip_points])
+    vert = np.linalg.norm(lip_coords[2] - lip_coords[10])
+    horiz = np.linalg.norm(lip_coords[0] - lip_coords[6])
+    return vert / horiz
+
+def check_head_orientation(landmarks, frame_width, frame_height):
+    nose = landmarks.landmark[4]
+    left_ear = landmarks.landmark[454]
+    right_ear = landmarks.landmark[234]
+    horizontal_ratio = abs((nose.x - left_ear.x) / (right_ear.x - nose.x))
+    vertical_diff = abs(left_ear.y - right_ear.y) * frame_height
+    return horizontal_ratio > 1.5 or vertical_diff > HEAD_TILT_THRESHOLD
+
+def check_eye_direction(left_eye_coords, right_eye_coords):
+    left_center = np.mean(left_eye_coords, axis=0)
+    right_center = np.mean(right_eye_coords, axis=0)
+    avg_x = (left_center[0] + right_center[0]) / 2
+    avg_y = (left_center[1] + right_center[1]) / 2
+
+    if avg_x < 1280 * EYE_DIRECTION_THRESHOLD:
+        return "LOOKING LEFT"
+    elif avg_x > 1280 * (1 - EYE_DIRECTION_THRESHOLD):
+        return "LOOKING RIGHT"
+    elif avg_y < 720 * EYE_DIRECTION_THRESHOLD:
+        return "LOOKING UP"
+    elif avg_y > 720 * (1 - EYE_DIRECTION_THRESHOLD):
+        return "LOOKING DOWN"
+    return None
+
+def start_alert():
+    global alert_playing
+    if not alert_playing and siren_sound:
+        siren_sound.play(-1)  # loop indefinitely
+        alert_playing = True
+
+def stop_alert():
+    global alert_playing
+    if alert_playing and siren_sound:
+        siren_sound.stop()
+        alert_playing = False
+
+def record_violation(violation_type):
+    global total_violations, current_violation_type, violation_timestamps, test_terminated
+    
+    total_violations += 1
+    current_violation_type = violation_type
+    violation_timestamps.append({
+        'type': violation_type,
+        'timestamp': time.time(),
+        'readable_time': time.strftime('%H:%M:%S', time.localtime())
+    })
+    
+    # Send violation to Java backend
+    try:
+        requests.post('http://localhost:9000/api/violation', 
+                     json={
+                         'type': violation_type,
+                         'timestamp': time.time(),
+                         'total_violations': total_violations
+                     }, timeout=2)
+    except Exception as e:
+        print(f"Failed to send violation to backend: {e}")
+    
+    if total_violations >= MAX_VIOLATIONS:
+        test_terminated = True
+        try:
+            requests.post('http://localhost:9000/api/terminate-test', 
+                         json={'reason': f'Maximum violations ({MAX_VIOLATIONS}) exceeded'}, 
+                         timeout=2)
+        except Exception as e:
+            print(f"Failed to send termination to backend: {e}")
+
+# --- Frame generator ---
+def generate_frames():
+    global prev_centroid, alert_counter, expression_counters, violation_frames_count, monitoring_active
+
+    last_timestamp = 0
+    while True:
+        success, image = cap.read()
+        if not success:
+            # If camera fails, create a black frame with error message
+            image = np.zeros((720, 1280, 3), dtype=np.uint8)
+            cv2.putText(image, "CAMERA NOT AVAILABLE", (400, 360),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+        else:
+            image = cv2.flip(image, 1)
+            
+            # Only process if monitoring is active
+            if monitoring_active:
+                current_timestamp = int(time.time() * 1000)  # Current timestamp in milliseconds
+                if current_timestamp <= last_timestamp:
+                    current_timestamp = last_timestamp + 1
+                last_timestamp = current_timestamp
+
+                rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                h, w, _ = image.shape
+
+                try:
+                    face_results = face_mesh.process(rgb_image)
+                    pose_results = pose.process(rgb_image)
+
+                    alerts = []
+                    score = 0
+                    current_face_count = 0
+
+                    # --- Face detection ---
+                    if face_results.multi_face_landmarks:
+                        current_face_count = len(face_results.multi_face_landmarks)
+
+                        if current_face_count > 1:
+                            expression_counters['multiple_faces'] += 1
+                            if expression_counters['multiple_faces'] >= EXPRESSION_CONSEC_FRAMES:
+                                alerts.append("MULTIPLE FACES DETECTED")
+                                score += 1
+                        else:
+                            expression_counters['multiple_faces'] = 0
+                            for face_landmarks in face_results.multi_face_landmarks:
+                                points = np.array([(lm.x * w, lm.y * h) for lm in face_landmarks.landmark])
+                                centroid = np.mean(points, axis=0)
+
+                                if prev_centroid is not None:
+                                    dist = np.linalg.norm(centroid - prev_centroid)
+                                    if dist > MOVEMENT_THRESHOLD:
+                                        alerts.append("EXCESSIVE HEAD MOVEMENT")
+                                        score += 1
+                                prev_centroid = centroid
+
+                                ear_avg, left_eye_coords = calculate_ear(LEFT_EYE, face_landmarks, w, h)
+                                _, right_eye_coords = calculate_ear(RIGHT_EYE, face_landmarks, w, h)
+
+                                eye_alert = check_eye_direction(left_eye_coords, right_eye_coords)
+                                if ear_avg < GAZE_THRESHOLD or eye_alert:
+                                    expression_counters['looking_away'] += 1
+                                    if expression_counters['looking_away'] >= EXPRESSION_CONSEC_FRAMES:
+                                        alerts.append(f"LOOKING AWAY ({eye_alert if eye_alert else 'DOWN/AVERTED'})")
+                                        score += 1
+                                else:
+                                    expression_counters['looking_away'] = 0
+
+                                mar = calculate_mar(LIPS, face_landmarks, w, h)
+                                if mar > MAR_THRESHOLD:
+                                    expression_counters['mouth_open'] += 1
+                                    if expression_counters['mouth_open'] >= EXPRESSION_CONSEC_FRAMES:
+                                        alerts.append("MOUTH MOVEMENT")
+                                        score += 1
+                                else:
+                                    expression_counters['mouth_open'] = 0
+
+                                if check_head_orientation(face_landmarks, w, h):
+                                    alerts.append("HEAD TILTED")
+                                    score += 1
+                    else:
+                        expression_counters['no_face'] += 1
+                        if expression_counters['no_face'] >= EXPRESSION_CONSEC_FRAMES:
+                            alerts.append("NO HUMAN DETECTED")
+                            score += 1
+                    if current_face_count == 1:
+                        expression_counters['no_face'] = 0
+
+                    # --- Pose detection ---
+                    if pose_results.pose_landmarks:
+                        pose_landmarks_history.append(pose_results.pose_landmarks)
+                        visible_landmarks = sum(1 for lm in pose_results.pose_landmarks.landmark if lm.visibility > 0.5)
+                        if visible_landmarks < MIN_VISIBLE_POSE_LANDMARKS:
+                            expression_counters['no_pose'] += 1
+                            if expression_counters['no_pose'] >= EXPRESSION_CONSEC_FRAMES:
+                                alerts.append("UPPER BODY NOT VISIBLE")
+                                score += 1
+                        else:
+                            expression_counters['no_pose'] = 0
+
+                    # --- Status ---
+                    status = "Incorrect" if score >= SCORE_THRESHOLD else "Correct"
+                    mesh_color = (0, 255, 0) if status == "Correct" else (0, 0, 255)
+
+                    # --- Draw landmarks ---
+                    if face_results.multi_face_landmarks:
+                        for face_landmarks in face_results.multi_face_landmarks:
+                            mp_drawing.draw_landmarks(
+                                image=image,
+                                landmark_list=face_landmarks,
+                                connections=mp_face_mesh.FACEMESH_TESSELATION,
+                                landmark_drawing_spec=None,
+                                connection_drawing_spec=mp_drawing.DrawingSpec(color=mesh_color, thickness=1, circle_radius=1)
+                            )
+                    if pose_results.pose_landmarks:
+                        mp_drawing.draw_landmarks(
+                            image,
+                            pose_results.pose_landmarks,
+                            mp_pose.POSE_CONNECTIONS,
+                            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+                        )
+
+                    # --- Violation alert system ---
+                    if status == "Incorrect":
+                        violation_frames_count += 1
+                        if violation_frames_count >= VIOLATION_FRAMES:
+                            violation_type = alerts[0] if alerts else "UNKNOWN_VIOLATION"
+                            record_violation(violation_type)
+                            start_alert()
+                            violation_frames_count = 0  # Reset counter
+                    else:
+                        violation_frames_count = 0
+                        stop_alert()
+
+                    # --- Display alerts ---
+                    if alerts:
+                        alert_counter = ALERT_DURATION
+                        for i, alert in enumerate(set(alerts)):
+                            cv2.putText(image, f"ALERT: {alert}", (50, 50 + i * 40),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                    elif alert_counter > 0:
+                        alert_counter -= 1
+                        cv2.putText(image, "ALERT: REVIEWING", (50, 50),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+
+                    # --- Display violation count ---
+                    cv2.putText(image, f"Violations: {total_violations}/{MAX_VIOLATIONS}", (w - 250, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                                (0, 255, 0) if total_violations < MAX_VIOLATIONS else (0, 0, 255), 2)
+
+                    # --- Display face count & status ---
+                    cv2.putText(image, f"Faces: {current_face_count}/1", (w - 150, 60),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                                (0, 255, 0) if current_face_count == 1 else (0, 0, 255), 2)
+                    cv2.putText(image, f"Status: {status}", (50, h - 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                                (0, 255, 0) if status=="Correct" else (0,0,255), 2)
+
+                    if test_terminated:
+                        cv2.putText(image, "TEST TERMINATED", (w//2 - 150, h//2),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+                except Exception as e:
+                    print(f"Error in frame processing: {e}")
+                    cv2.putText(image, "PROCESSING ERROR", (w//2 - 150, h//2),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+            else:
+                # Show monitoring inactive message
+                h, w, _ = image.shape
+                cv2.putText(image, "MONITORING INACTIVE", (w//2 - 200, h//2),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 3)
+
+        ret, buffer = cv2.imencode('.jpg', image)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+# --- Flask routes ---
+@app.route('/')
+def index():
+    return render_template('flask_test.html')
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# --- API endpoints for Java backend communication ---
+@app.route('/api/status')
+def get_status():
+    return jsonify({
+        'monitoring_active': monitoring_active,
+        'total_violations': total_violations,
+        'current_violation_type': current_violation_type,
+        'test_terminated': test_terminated,
+        'max_violations': MAX_VIOLATIONS
+    })
+
+@app.route('/api/violations')
+def get_violations():
+    return jsonify({
+        'total_violations': total_violations,
+        'violations': violation_timestamps,
+        'test_terminated': test_terminated
+    })
+
+@app.route('/api/start-monitoring', methods=['POST'])
+def start_monitoring():
+    global monitoring_active, total_violations, violation_timestamps, test_terminated
+    monitoring_active = True
+    total_violations = 0
+    violation_timestamps = []
+    test_terminated = False
+    return jsonify({'status': 'monitoring_started'})
+
+@app.route('/api/stop-monitoring', methods=['POST'])
+def stop_monitoring():
+    global monitoring_active
+    monitoring_active = False
+    stop_alert()
+    return jsonify({'status': 'monitoring_stopped'})
+
+@app.route('/api/reset', methods=['POST'])
+def reset_monitoring():
+    global total_violations, violation_timestamps, test_terminated, current_violation_type
+    total_violations = 0
+    violation_timestamps = []
+    test_terminated = False
+    current_violation_type = None
+    stop_alert()
+    return jsonify({'status': 'reset_complete'})
+
+if __name__ == '__main__':
+    try:
+        print("Enhanced Exam Proctoring System Starting...")
+        print("Camera initialized at 1280x720")
+        print("Server running on http://localhost:5005")
+        print("Monitoring will start automatically")
+        app.run(host="0.0.0.0", port=5005, debug=False, threaded=True)
+    except KeyboardInterrupt:
+        print("\nApplication stopped")
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        stop_alert()
