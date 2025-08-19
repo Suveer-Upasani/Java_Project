@@ -48,18 +48,32 @@ The main files and directories of this project are organized as follows:
 ```
 Java_Project/
 │
+├── bin/
+│   └── ...                                  # Compilation & wrapper files
 ├── src/
-│   └── main/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── suveer/
+│   │   │           └── demo/
+│   │   │               ├── DemoApplication.java   # Main application entry point
+│   │   │               ├── repository/            # Repository classes
+│   │   │               ├── model/                 # Model classes
+│   │   │               ├── Controller.java        # Example controller
+│   │   │               └── Service.java           # Example service
+│   │   └── resources/
+│   │       └── templates/                          # HTML or template files
+│   └── test/
 │       └── java/
 │           └── com/
 │               └── suveer/
-│                   └── demo/
-│                       ├── DemoApplication.java   # Main application entry point
-│                       ├── Controller.java        # Example controller
-│                       ├── Service.java           # Example service
-│                       └── Repository.java        # Example repository
-├── pom.xml                                      # Maven project file
-└── README.md                                    # Project documentation
+│                   └── demo/                       # Test files
+├── target/                                        # Compiled classes & build artifacts
+├── .mvn/                                          # Maven wrapper
+├── .git/                                          # Git repository
+├── .settings/                                     # IDE settings
+├── pom.xml                                        # Maven project file
+└── README.md                                      # Project documentation
 ```
 
 ---
@@ -82,7 +96,8 @@ From the root of the project directory:
 mvn spring-boot:run
 ```
 
-Maven will automatically compile the project and run `DemoApplication.java`.
+Maven will automatically compile the project and run `DemoApplication.java`.  
+> **Note:** The application is configured to run on **port 9090**.
 
 ### 2. Running Directly
 
@@ -104,9 +119,7 @@ Run the application:
 java DemoApplication
 ```
 
-> **Note:** Using Maven is recommended since it handles dependencies automatically.  
-
-> **Mac Users:** If running directly on a Mac, ensure your terminal has Java JDK correctly configured. You may need to set `JAVA_HOME`:
+> **Mac Users:** Ensure your terminal has Java JDK correctly configured. You may need to set `JAVA_HOME`:
 >
 > ```bash
 > export JAVA_HOME=$(/usr/libexec/java_home)
@@ -119,7 +132,7 @@ java DemoApplication
 Once the application is running, open your web browser and visit:
 
 ```
-http://localhost:8080
+http://localhost:9090
 ```
 
 You should see the application responding to requests.
