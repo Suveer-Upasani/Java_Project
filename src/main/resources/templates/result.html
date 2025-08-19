@@ -1,25 +1,80 @@
-
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Test Result</title>
     <style>
         body { font-family: Arial; background: #f4f4f4; padding: 50px; text-align: center; }
-        .container { background: white; padding: 30px; border-radius: 8px; display: inline-block; }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            display: inline-block; 
+            max-width: 600px;
+            margin: 0 auto;
+        }
         h2 { color: #333; }
         p { font-size: 18px; }
-        a { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #5cb85c; color: white; text-decoration: none; border-radius: 4px; }
+        a { 
+            display: inline-block; 
+            margin-top: 20px; 
+            padding: 10px 20px; 
+            background: #5cb85c; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+        }
         a:hover { background: #4cae4c; }
+        .violation-info {
+            background: #fff3cd;
+            border: 1px solid #ffedb5;
+            color: #856404;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .terminated-info {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h2>Test Completed!</h2>
-    <p>Your Score: <span th:text="${score}"></span> / <span th:text="${total}"></span></p>
+    
+    <div th:if="${terminated}" class="terminated-info">
+        <strong>⚠️ TEST WAS TERMINATED</strong><br>
+        Test was automatically terminated due to excessive violations during proctoring.
+    </div>
+    
+    <div th:if="${violations > 0}" class="violation-info">
+        <strong>Proctoring Violations:</strong> <span th:text="${violations}"></span> detected during the test
+    </div>
+    
+    <p class="score">Your Score: <span th:text="${score}"></span> / <span th:text="${total}"></span></p>
+    
+    <div th:if="${violations == 0}" style="color: #155724; background: #d4edda; padding: 10px; border-radius: 4px; margin: 15px 0;">
+        ✅ No violations detected - Clean test completion
+    </div>
+    
     <a th:href="@{/welcome}">Back to Welcome</a>
 </div>
+
+<script>
+    // Stop monitoring on result page
+    window.onload = function() {
+        fetch('http://127.0.0.1:5005/api/stop-monitoring', {
+            method: 'POST'
+        }).catch(error => console.error('Error stopping monitoring:', error));
+    };
+</script>
 </body>
 </html>
-
-
-

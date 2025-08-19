@@ -5,15 +5,24 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.ui.Model;
+import org.springframework.http.ResponseEntity;
 
 import jakarta.servlet.http.HttpSession;
 import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Controller
 public class Hello {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    // Violation tracking
+    private int currentTestViolations = 0;
+    private boolean testTerminated = false;
+    private List<ViolationRecord> violations = new ArrayList<>();
+    private final int MAX_VIOLATIONS = 3;
 
     @GetMapping("/api")
     @ResponseBody
@@ -64,6 +73,11 @@ public class Hello {
     // Start Test Page (Randomized Questions)
     @GetMapping("/start-test")
     public String startTest(Model model, HttpSession session) {
+        // Reset violation tracking for new test
+        currentTestViolations = 0;
+        testTerminated = false;
+        violations.clear();
+
         List<Question> questions = new ArrayList<>();
 
         // Add questions without numbering (numbers will be added dynamically in template)
@@ -126,9 +140,78 @@ public class Hello {
             }
         }
 
+        // Store test result in database
+        String sql = "INSERT INTO test_results (score, total, violations, submitted_at, terminated) VALUES (?, ?, ?, ?, ?)";
+        jdbcTemplate.update(sql, score, total, currentTestViolations, LocalDateTime.now().toString(), testTerminated);
+
         model.addAttribute("score", score);
         model.addAttribute("total", total);
+        model.addAttribute("violations", currentTestViolations);
+        model.addAttribute("terminated", testTerminated);
         return "result";
+    }
+
+    // --- New API endpoints for proctoring integration ---
+    
+    @PostMapping("/api/violation")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> recordViolation(@RequestBody ViolationRequest request) {
+        currentTestViolations = request.getTotalViolations();
+        
+        ViolationRecord violation = new ViolationRecord();
+        violation.setType(request.getType());
+        violation.setTimestamp(request.getTimestamp());
+        violation.setReadableTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+        violations.add(violation);
+
+        // Store violation in database
+        String sql = "INSERT INTO violations (type, timestamp, readable_time) VALUES (?, ?, ?)";
+        jdbcTemplate.update(sql, request.getType(), request.getTimestamp(), violation.getReadableTime());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "violation_recorded");
+        response.put("total_violations", currentTestViolations);
+        response.put("max_violations", MAX_VIOLATIONS);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/terminate-test")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> terminateTest(@RequestBody TerminationRequest request) {
+        testTerminated = true;
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "test_terminated");
+        response.put("reason", request.getReason());
+        response.put("total_violations", currentTestViolations);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/api/test-status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getTestStatus() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("violations", currentTestViolations);
+        response.put("max_violations", MAX_VIOLATIONS);
+        response.put("terminated", testTerminated);
+        response.put("violation_list", violations);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/reset-violations")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> resetViolations() {
+        currentTestViolations = 0;
+        testTerminated = false;
+        violations.clear();
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "violations_reset");
+        
+        return ResponseEntity.ok(response);
     }
 }
 
@@ -155,4 +238,44 @@ class Question {
     public String getAnswer() {
         return answer;
     }
+}
+
+// Violation tracking classes
+class ViolationRecord {
+    private String type;
+    private double timestamp;
+    private String readableTime;
+
+    // Getters and setters
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+    
+    public double getTimestamp() { return timestamp; }
+    public void setTimestamp(double timestamp) { this.timestamp = timestamp; }
+    
+    public String getReadableTime() { return readableTime; }
+    public void setReadableTime(String readableTime) { this.readableTime = readableTime; }
+}
+
+class ViolationRequest {
+    private String type;
+    private double timestamp;
+    private int totalViolations;
+
+    // Getters and setters
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+    
+    public double getTimestamp() { return timestamp; }
+    public void setTimestamp(double timestamp) { this.timestamp = timestamp; }
+    
+    public int getTotalViolations() { return totalViolations; }
+    public void setTotalViolations(int totalViolations) { this.totalViolations = totalViolations; }
+}
+
+class TerminationRequest {
+    private String reason;
+
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
 }

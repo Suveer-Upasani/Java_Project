@@ -84,10 +84,49 @@
             font-size: 12px;
             z-index: 1001;
         }
+
+        /* Violation Warning */
+        #violation-warning {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: #ff4444;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            z-index: 1100;
+            display: none;
+            font-weight: bold;
+        }
+
+        /* Test Terminated Overlay */
+        .terminated-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            font-weight: bold;
+            z-index: 2000;
+        }
     </style>
 </head>
 <body>
 <div id="timer">Time Left: 1:30</div>
+<div id="violation-warning">Warning: Violation Detected!</div>
+<div class="terminated-overlay" id="terminated-overlay">
+    <div>
+        <h1>TEST TERMINATED</h1>
+        <p>Maximum violations exceeded. Test will be submitted automatically.</p>
+    </div>
+</div>
 
 <div class="container">
     <h2>Java Test (10 Marks)</h2>
@@ -119,41 +158,95 @@
     let timeLeft = 90;  
     const timerDisplay = document.getElementById("timer");
     const form = document.getElementById("testForm");
+    const violationWarning = document.getElementById("violation-warning");
+    const terminatedOverlay = document.getElementById("terminated-overlay");
+    let testTerminated = false;
 
     function updateTimer() {
         let minutes = Math.floor(timeLeft / 60);
         let seconds = timeLeft % 60;
         timerDisplay.textContent = "Time Left: " + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
 
-        if (timeLeft <= 0) {
+        if (timeLeft <= 0 && !testTerminated) {
             clearInterval(timerInterval);
             form.submit();  // Auto-submit form
         }
         timeLeft--;
     }
 
+    // Check violation status periodically
+    async function checkViolationStatus() {
+        try {
+            const response = await fetch('/api/test-status');
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.violations > 0) {
+                    violationWarning.style.display = 'block';
+                    violationWarning.textContent = `Warning: ${data.violations}/${data.max_violations} violations detected!`;
+                    
+                    // Auto-hide warning after 3 seconds
+                    setTimeout(() => {
+                        violationWarning.style.display = 'none';
+                    }, 3000);
+                }
+
+                if (data.terminated && !testTerminated) {
+                    testTerminated = true;
+                    clearInterval(timerInterval);
+                    clearInterval(violationCheckInterval);
+                    
+                    // Show termination overlay
+                    terminatedOverlay.style.display = 'flex';
+                    
+                    // Auto-submit after 5 seconds
+                    setTimeout(() => {
+                        form.submit();
+                    }, 5000);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking violation status:', error);
+        }
+    }
+
     // Run timer every second
     const timerInterval = setInterval(updateTimer, 1000);
     updateTimer();  // Initialize immediately
 
+    // Check violations every 2 seconds
+    const violationCheckInterval = setInterval(checkViolationStatus, 2000);
+
     // 🚫 Prevent refresh / closing
     window.onbeforeunload = function () {
-        return "You cannot refresh or leave the test!";
+        if (!testTerminated) {
+            return "You cannot refresh or leave the test!";
+        }
     };
 
     // 🚫 Disable back button
     history.pushState(null, null, location.href);
     window.onpopstate = function () {
-        history.pushState(null, null, location.href);
+        if (!testTerminated) {
+            history.pushState(null, null, location.href);
+        }
     };
 
     // 🚫 Block F5 / Ctrl+R / Cmd+R
     document.addEventListener("keydown", function (e) {
-        if (e.key === "F5" || 
+        if (!testTerminated && (e.key === "F5" || 
             (e.ctrlKey && e.key.toLowerCase() === "r") || 
-            (e.metaKey && e.key.toLowerCase() === "r")) {
+            (e.metaKey && e.key.toLowerCase() === "r"))) {
             e.preventDefault();
         }
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', function() {
+        // Stop monitoring when test is submitted
+        fetch('http://127.0.0.1:5005/api/stop-monitoring', {
+            method: 'POST'
+        }).catch(error => console.error('Error stopping monitoring:', error));
     });
 </script>
 

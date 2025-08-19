@@ -35,7 +35,12 @@
         button:hover { background-color: #4cae4c; }
         .switch { text-align: center; margin-top: 10px; }
         a { color: #5cb85c; text-decoration: none; }
-        .error { color: red; font-size: 12px; }
+        .error { 
+            color: red; 
+            font-size: 12px; 
+            text-align: center; 
+            margin-top: 10px; 
+        }
     </style>
 </head>
 <body>
@@ -52,8 +57,11 @@
         </div>
         <button type="submit">Login</button>
     </form>
+    <div th:if="${param.error}" class="error">
+        Invalid username or password!
+    </div>
     <div class="switch">
-        Don't have an account? <a th:href="@{/signup}">Sign up</a>
+        Don't have an account? <a th:href="@{/signup}">Sign Up</a>
     </div>
 </div>
 </body>
