@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student Dashboard - ExamProctor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .section {
+            background: white;
+            margin-bottom: 30px;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .tests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .test-card {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .test-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        .test-card h3 {
+            color: #333;
+            margin: 0 0 10px 0;
+        }
+        .test-meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .start-test-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .start-test-btn:hover { transform: translateY(-2px); }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .results-table th, .results-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .results-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .score-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .violations-badge {
+            background: #dc3545;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .no-violations {
+            background: #28a745;
+        }
+        .empty-state {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-content">
+        <div class="logo">📊 ExamProctor</div>
+        <div class="user-info">
+            <span>Welcome, <strong th:text="${session.username}">Student</strong></span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="section">
+        <h2>🎯 Available Tests</h2>
+        <div class="tests-grid" th:if="${tests != null and not #lists.isEmpty(tests)}">
+            <div class="test-card" th:each="test : ${tests}">
+                <h3 th:text="${test.test_name}">Test Name</h3>
+                <div class="test-meta">
+                    <div><strong>Subject:</strong> <span th:text="${test.subject}">Subject</span></div>
+                    <div><strong>Duration:</strong> <span th:text="${test.duration_minutes}">60</span> minutes</div>
+                </div>
+                <a th:href="@{'/start-test/' + ${test.id}}" class="start-test-btn">Start Test</a>
+            </div>
+        </div>
+        <div class="empty-state" th:if="${tests == null or #lists.isEmpty(tests)}">
+            <p>No tests available at the moment. Please check back later.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 Your Test Results</h2>
+        <div th:if="${results != null and not #lists.isEmpty(results)}">
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Subject</th>
+                        <th>Score</th>
+                        <th>Violations</th>
+                        <th>Submitted At</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="result : ${results}">
+                        <td th:text="${result.test_name}">Test Name</td>
+                        <td th:text="${result.subject}">Subject</td>
+                        <td>
+                            <span class="score-badge" th:text="${result.score} + '/' + ${result.total}">0/10</span>
+                        </td>
+                        <td>
+                            <span class="violations-badge" 
+                                  th:classappend="${result.violations == 0} ? 'no-violations' : ''"
+                                  th:text="${result.violations}">0</span>
+                        </td>
+                        <td th:text="${result.submitted_at}">2024-01-01 12:00:00</td>
+                        <td>
+                            <span th:if="${result.terminated}" style="color: #dc3545;">TERMINATED</span>
+                            <span th:unless="${result.terminated}" style="color: #28a745;">COMPLETED</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${results == null or #lists.isEmpty(results)}">
+            <p>You haven't taken any tests yet. Start with an available test above!</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Check Flask service status
+    window.onload = async function() {
+        try {
+            const response = await fetch('http://127.0.0.1:5005/api/status');
+            if (response.ok) {
+                console.log('Proctoring system ready');
+            }
+        } catch (error) {
+            console.warn('Proctoring system may not be available');
+        }
+    }
+</script>
+</body>
+</html>

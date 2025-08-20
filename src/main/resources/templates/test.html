@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Online Test - ExamProctor</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f8f9fa; 
+            padding: 20px; 
+            margin: 0;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            max-width: 1000px; 
+            margin: auto; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            text-align: center;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .test-header h2 { 
+            color: #333; 
+            margin: 0;
+            font-size: 2em;
+        }
+        .test-meta {
+            color: #666;
+            margin-top: 10px;
+        }
+        .question { 
+            margin-bottom: 30px; 
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            transition: border-color 0.3s;
+        }
+        .question:hover {
+            border-color: #667eea;
+        }
+        .question h3 {
+            color: #333;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+        }
+        .options {
+            display: grid;
+            gap: 10px;
+        }
+        .options label { 
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+        .options label:hover {
+            border-color: #667eea;
+            background: #e3f2fd;
+        }
+        .options input[type="radio"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+        }
+        .submit-section {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e9ecef;
+        }
+        .submit-btn { 
+            padding: 15px 40px; 
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-size: 18px;
+            font-weight: 600;
+            transition: transform 0.3s;
+        }
+        .submit-btn:hover { 
+            transform: translateY(-3px);
+        }
+
+        /* Fixed Timer */
+        #timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #dc3545;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1100;
+            border: 2px solid #dc3545;
+        }
+
+        /* Fixed Monitoring Window */
+        .video-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 225px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 1000;
+            border: 3px solid #667eea;
+        }
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .monitoring-label {
+            position: fixed;
+            bottom: 255px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1001;
+        }
+
+        /* Violation Warning */
+        #violation-warning {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1100;
+            display: none;
+            font-weight: bold;
+            border: 2px solid #a71e2a;
+        }
+
+        /* Test Terminated Overlay */
+        .terminated-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(220, 53, 69, 0.95);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            font-weight: bold;
+            z-index: 2000;
+            text-align: center;
+        }
+        .terminated-content h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+<div id="timer">Time Left: <span id="time-display"></span></div>
+<div id="violation-warning">⚠️ Violation Detected!</div>
+<div class="terminated-overlay" id="terminated-overlay">
+    <div class="terminated-content">
+        <h1>🚫 TEST TERMINATED</h1>
+        <p>Maximum violations exceeded.<br>Test will be submitted automatically.</p>
+        <p style="font-size: 0.6em; margin-top: 20px;">Redirecting in 5 seconds...</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="test-header">
+        <h2 th:text="${test.test_name}">Test Name</h2>
+        <div class="test-meta">
+            <strong>Subject:</strong> <span th:text="${test.subject}">Subject</span> |
+            <strong>Duration:</strong> <span th:text="${test.duration_minutes}">60</span> minutes |
+            <strong>Questions:</strong> <span th:text="${questions.size()}">10</span>
+        </div>
+    </div>
+
+    <!-- Test Form -->
+    <form id="testForm" th:action="@{/submit-test}" method="post">
+        <div th:each="q, iterStat : ${questions}" class="question">
+            <h3 th:text="'Question ' + (${iterStat.index + 1}) + ': ' + ${q.question}">Question Text</h3>
+            <div class="options">
+                <label th:each="opt : ${q.options}">
+                    <input type="radio" th:name="'q' + ${iterStat.index}" th:value="${opt}" required>
+                    <span th:text="${opt}">Option</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="submit-section">
+            <button type="submit" class="submit-btn">📝 Submit Test</button>
+        </div>
+    </form>
+</div>
+
+<!-- Floating Flask live feed -->
+<div class="monitoring-label">🔴 Live Proctoring</div>
+<div class="video-container">
+    <img src="http://127.0.0.1:5005/video_feed" class="video-feed" alt="Live Camera Feed">
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    // Get test duration from server (in minutes)
+    let timeLeft = parseInt([[${session.testDuration}]]) * 60; // Convert to seconds
+    const timerDisplay = document.getElementById("time-display");
+    const form = document.getElementById("testForm");
+    const violationWarning = document.getElementById("violation-warning");
+    const terminatedOverlay = document.getElementById("terminated-overlay");
+    let testTerminated = false;
+
+    function updateTimer() {
+        let minutes = Math.floor(timeLeft / 60);
+        let seconds = timeLeft % 60;
+        timerDisplay.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+
+        // Change color when time is running low
+        const timer = document.getElementById("timer");
+        if (timeLeft <= 300) { // Last 5 minutes
+            timer.style.color = "#dc3545";
+            timer.style.borderColor = "#dc3545";
+        } else if (timeLeft <= 600) { // Last 10 minutes
+            timer.style.color = "#ffc107";
+            timer.style.borderColor = "#ffc107";
+        }
+
+        if (timeLeft <= 0 && !testTerminated) {
+            clearInterval(timerInterval);
+            alert("Time's up! Submitting your test...");
+            form.submit();
+        }
+        timeLeft--;
+    }
+
+    // Check violation status periodically
+    async function checkViolationStatus() {
+        try {
+            const response = await fetch('/api/test-status');
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.violations > 0) {
+                    violationWarning.style.display = 'block';
+                    violationWarning.innerHTML = `⚠️ Warning: ${data.violations}/${data.max_violations} violations detected!`;
+                    
+                    // Auto-hide warning after 4 seconds
+                    setTimeout(() => {
+                        violationWarning.style.display = 'none';
+                    }, 4000);
+                }
+
+                if (data.terminated && !testTerminated) {
+                    testTerminated = true;
+                    clearInterval(timerInterval);
+                    clearInterval(violationCheckInterval);
+                    
+                    // Show termination overlay
+                    terminatedOverlay.style.display = 'flex';
+                    
+                    // Auto-submit after 5 seconds
+                    setTimeout(() => {
+                        form.submit();
+                    }, 5000);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking violation status:', error);
+        }
+    }
+
+    // Initialize timer
+    updateTimer();
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    // Check violations every 2 seconds
+    const violationCheckInterval = setInterval(checkViolationStatus, 2000);
+
+    // Prevent refresh/closing
+    window.onbeforeunload = function () {
+        if (!testTerminated) {
+            return "You cannot refresh or leave the test!";
+        }
+    };
+
+    // Disable back button
+    history.pushState(null, null, location.href);
+    window.onpopstate = function () {
+        if (!testTerminated) {
+            history.pushState(null, null, location.href);
+        }
+    };
+
+    // Block F5, Ctrl+R, Cmd+R
+    document.addEventListener("keydown", function (e) {
+        if (!testTerminated && (
+            e.key === "F5" || 
+            (e.ctrlKey && e.key.toLowerCase() === "r") || 
+            (e.metaKey && e.key.toLowerCase() === "r")
+        )) {
+            e.preventDefault();
+            violationWarning.style.display = 'block';
+            violationWarning.innerHTML = '🚫 Refresh/Reload is not allowed during test!';
+            setTimeout(() => {
+                violationWarning.style.display = 'none';
+            }, 3000);
+        }
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        if (!testTerminated) {
+            const confirmed = confirm('Are you sure you want to submit your test? You cannot change answers after submission.');
+            if (!confirmed) {
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        // Stop monitoring when test is submitted
+        fetch('http://127.0.0.1:5005/api/stop-monitoring', {
+            method: 'POST'
+        }).catch(error => console.error('Error stopping monitoring:', error));
+    });
+    /*]]>*/
+</script>
+</body>
+</html>

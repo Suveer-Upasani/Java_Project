@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Test Management - Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: linear-gradient(135deg, #dc3545 0%, #6f42c1 100%);
+            color: white;
+            padding: 15px 0;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-size: 1.3em; font-weight: bold; }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            transition: background 0.3s;
+        }
+        .nav-links a:hover { background: rgba(255,255,255,0.2); }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .section {
+            background: white;
+            margin-bottom: 30px;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #28a745;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #28a745;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .tests-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .tests-table th, .tests-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .tests-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .tests-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .alert {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .json-helper {
+            background: #fff3cd;
+            border: 1px solid #ffedb5;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        .json-helper h4 {
+            margin: 0 0 10px 0;
+        }
+        .json-helper code {
+            background: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-content">
+        <div class="logo">📝 Test Management</div>
+        <div class="nav-links">
+            <a href="/admin-dashboard">Dashboard</a>
+            <a href="/admin/users">Users</a>
+            <a href="/admin/results">Results</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Success Messages -->
+    <div th:if="${param.success}" class="alert alert-success">
+        <span th:if="${param.success[0] == 'test_created'}">Test created successfully!</span>
+    </div>
+
+    <!-- Create Test Section -->
+    <div class="section">
+        <h2>➕ Create New Test</h2>
+        
+        <div class="json-helper">
+            <h4>📝 Questions Format Help</h4>
+            <p>Enter questions in JSON format. Each question should have:</p>
+            <ul style="margin: 8px 0;">
+                <li><code>"q"</code>: Question text</li>
+                <li><code>"o"</code>: Array of 4 options</li>
+                <li><code>"a"</code>: Correct answer (must match one of the options)</li>
+            </ul>
+            <p><strong>Example:</strong></p>
+            <code>[{"q":"What is 2+2?","o":["3","4","5","6"],"a":"4"},{"q":"Capital of France?","o":["London","Berlin","Paris","Madrid"],"a":"Paris"}]</code>
+        </div>
+
+        <form action="/admin/create-test" method="post">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="testName">Test Name</label>
+                    <input type="text" id="testName" name="testName" required placeholder="e.g., Java Mid-Term Exam">
+                </div>
+                <div class="form-group">
+                    <label for="subject">Subject</label>
+                    <input type="text" id="subject" name="subject" required placeholder="e.g., Java Programming">
+                </div>
+                <div class="form-group">
+                    <label for="duration">Duration (minutes)</label>
+                    <input type="number" id="duration" name="duration" required min="5" max="300" placeholder="60">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="questions">Questions (JSON Format)</label>
+                <textarea id="questions" name="questions" required 
+                    placeholder='[{"q":"Which keyword is used to inherit a class in Java?","o":["extends","implements","inherits","super"],"a":"extends"}]'></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-success">Create Test</button>
+        </form>
+    </div>
+
+    <!-- Tests List Section -->
+    <div class="section">
+        <h2>📋 All Tests</h2>
+        <div th:if="${tests != null and not #lists.isEmpty(tests)}">
+            <table class="tests-table">
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Subject</th>
+                        <th>Duration</th>
+                        <th>Created At</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="test : ${tests}">
+                        <td th:text="${test.test_name}">Test Name</td>
+                        <td th:text="${test.subject}">Subject</td>
+                        <td th:text="${test.duration_minutes} + ' min'">Duration</td>
+                        <td th:text="${test.created_at}">Date</td>
+                        <td>
+                            <span class="status-badge" 
+                                  th:classappend="${test.active == 1} ? 'status-active' : 'status-inactive'"
+                                  th:text="${test.active == 1} ? 'Active' : 'Inactive'">Status</span>
+                        </td>
+                        <td>
+                            <form style="display: inline;" action="/admin/toggle-test" method="post">
+                                <input type="hidden" name="testId" th:value="${test.id}">
+                                <button type="submit" class="btn" 
+                                        th:classappend="${test.active == 1} ? 'btn-warning' : 'btn-info'"
+                                        th:text="${test.active == 1} ? 'Deactivate' : 'Activate'">Toggle</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${tests == null or #lists.isEmpty(tests)}" style="text-align: center; color: #666; padding: 40px 0;">
+            <p>No tests found. Create your first test above!</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add some sample JSON when page loads for easier testing
+document.getElementById('questions').addEventListener('focus', function() {
+    if (this.value === '') {
+        this.value = '[{"q":"Which keyword is used to inherit a class in Java?","o":["extends","implements","inherits","super"],"a":"extends"},{"q":"What is the default value of boolean variable in Java?","o":["true","false","0","null"],"a":"false"}]';
+    }
+});
+</script>
+</body>
+</html>

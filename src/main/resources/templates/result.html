@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Test Result - ExamProctor</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 50px 20px; 
+            text-align: center;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 20px; 
+            display: inline-block; 
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        h2 { 
+            color: #333; 
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .result-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        .success-icon { color: #28a745; }
+        .warning-icon { color: #ffc107; }
+        .danger-icon { color: #dc3545; }
+        
+        .score-display {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        .violation-info {
+            background: #fff3cd;
+            border: 2px solid #ffedb5;
+            color: #856404;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        .terminated-info {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        .clean-completion {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        .action-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        .btn { 
+            display: inline-block; 
+            padding: 15px 30px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            text-decoration: none; 
+            border-radius: 10px; 
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.3s;
+        }
+        .btn:hover { 
+            transform: translateY(-3px);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+        .performance-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .performance-details h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+            text-align: center;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-label {
+            font-weight: 500;
+            color: #555;
+        }
+        .detail-value {
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Result Icon -->
+    <div th:if="${terminated}" class="result-icon danger-icon">🚫</div>
+    <div th:if="${!terminated and violations > 0}" class="result-icon warning-icon">⚠️</div>
+    <div th:if="${!terminated and violations == 0}" class="result-icon success-icon">✅</div>
+    
+    <h2>Test Completed!</h2>
+    
+    <!-- Termination Warning -->
+    <div th:if="${terminated}" class="terminated-info">
+        <strong>🚫 TEST WAS TERMINATED</strong><br>
+        Test was automatically terminated due to excessive proctoring violations.
+    </div>
+    
+    <!-- Score Display -->
+    <div class="score-display">
+        Your Score: <span th:text="${score}">0</span> / <span th:text="${total}">10</span>
+        <div style="font-size: 0.6em; margin-top: 5px;">
+            Percentage: <span th:text="${#numbers.formatDecimal(score * 100.0 / total, 1, 1)}">0</span>%
+        </div>
+    </div>
+    
+    <!-- Performance Details -->
+    <div class="performance-details">
+        <h4>📊 Performance Summary</h4>
+        <div class="detail-row">
+            <span class="detail-label">Correct Answers:</span>
+            <span class="detail-value" th:text="${score}">0</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Incorrect Answers:</span>
+            <span class="detail-value" th:text="${total - score}">0</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Total Questions:</span>
+            <span class="detail-value" th:text="${total}">0</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Proctoring Violations:</span>
+            <span class="detail-value" style="color: #dc3545;" th:text="${violations}">0</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Test Status:</span>
+            <span class="detail-value" th:text="${terminated} ? 'Terminated' : 'Completed'">Completed</span>
+        </div>
+    </div>
+    
+    <!-- Violation Info -->
+    <div th:if="${violations > 0 and !terminated}" class="violation-info">
+        <strong>⚠️ Proctoring Violations:</strong> <span th:text="${violations}">0</span> detected during the test.<br>
+        <small>Violations include looking away, multiple faces, suspicious behavior, etc.</small>
+    </div>
+    
+    <!-- Clean Completion -->
+    <div th:if="${violations == 0}" class="clean-completion">
+        <strong>✅ Clean Test Completion</strong><br>
+        No proctoring violations detected - Excellent conduct!
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a th:href="@{/student-dashboard}" class="btn">📊 Dashboard</a>
+        <a th:href="@{/logout}" class="btn btn-secondary">🚪 Logout</a>
+    </div>
+</div>
+
+<script>
+    // Stop monitoring on result page
+    window.onload = function() {
+        fetch('http://127.0.0.1:5005/api/stop-monitoring', {
+            method: 'POST'
+        }).catch(error => console.error('Error stopping monitoring:', error));
+    };
+</script>
+</body>
+</html>
