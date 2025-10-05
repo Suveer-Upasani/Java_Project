@@ -1,151 +1,107 @@
-Here’s your **updated README** with the video and image embedded properly from your GitHub links:
+# VisionForge
 
-````markdown
-# Read Me Format
+**Team Members:** Suveer K Upasani, Parth Paygude, Ansh Bhingardive, Ashitosh Lavhate  
 
-**Team Name:** VisionForge
+**Project Name:** Customizable and scalable API enabling institutions to conduct proctored online exams with ease and reliability  
 
-**Team members name:** Suveer K Upasani, Parth Paygude, Ansh Bhingardive, Ashitosh Lavhate
+**Project Abstract:**  
+A robust, scalable, and fully customizable API engineered to power proctor-based online examination systems. It delivers secure, flexible, and efficient exam management while ensuring seamless integration, adaptability to diverse exam formats, and a smooth experience for both administrators and candidates.
 
-**Project name:** Customizable and scalable API enabling institutions to conduct proctored online exams with ease and reliability.
-
-**Project abstract:** A robust, scalable, and fully customizable API engineered to power proctor-based online examination systems, delivering secure, flexible, and highly efficient exam management while ensuring seamless integration, adaptability to diverse exam formats, and a smooth experience for both administrators and candidates.
-
-**Tech stack:** Python, Mediapipe, Flask, Java (Spring Boot), HTML, CSS, JS
+**Tech Stack:** Python, Mediapipe, Flask, Java (Spring Boot), HTML, CSS, JS  
 
 ---
 
-# Demo Video
+## Demo Video
 
-[![Watch the Demo](https://github.com/Suveer-Upasani/VisionForge/blob/main/Flow.jpeg)](https://github.com/Suveer-Upasani/VisionForge/blob/main/Demo.mp4)
+[![Watch the Demo](https://github.com/Suveer-Upasani/VisionForge/blob/main/Flow.jpeg)](https://github.com/Suveer-Upasani/VisionForge/blob/main/Demo.mp4)  
 
-*Click on the image to play the demo video.*
-
----
-
-# Java Spring Boot Project
-
-A Java Spring Boot project built for demonstration purposes. This guide explains how to clone the repository and run the main application.
+*Click the image to play the demo video.*
 
 ---
 
-## Table of Contents
+## Java Spring Boot Project
 
-1. [Prerequisites](#prerequisites)
-2. [Clone Repository](#clone-repository)
-3. [Project Structure](#project-structure)
-4. [Run the Application](#run-the-application)
-5. [Access the Application](#access-the-application)
-6. [Author](#author)
+This is a Java Spring Boot project built for demonstration purposes. It explains how to clone the repository and run the main application.
 
 ---
 
-## Prerequisites
+### Table of Contents
 
-Before running the project, make sure you have the following installed:
-
-* **Java JDK** (version 8 or above)
-* **Maven** (for building and running the project)
-* **IDE** such as IntelliJ IDEA, Eclipse, or VS Code (optional)
+1. [Prerequisites](#prerequisites)  
+2. [Clone Repository](#clone-repository)  
+3. [Project Structure](#project-structure)  
+4. [Run the Application](#run-the-application)  
+5. [Access the Application](#access-the-application)  
+6. [Author](#author)  
 
 ---
 
-## Clone Repository
+### Prerequisites
 
-To get a copy of the project, run the following command in your terminal:
+Before running the project, ensure you have:  
+
+- Java JDK (version 8 or above)  
+- Maven (for building and running the project)  
+- IDE such as IntelliJ IDEA, Eclipse, or VS Code (optional)  
+
+---
+
+### Clone Repository
 
 ```bash
 git clone https://github.com/Suveer-Upasani/Java_Project.git
-````
-
-Navigate into the project directory:
-
-```bash
 cd Java_Project
 ```
 
 ---
 
-## Project Structure
-
-The main files and directories of this project are organized as follows:
+### Project Structure
 
 ```
 Java_Project/
 │
-├── bin/
-│   └── ...                                  # Compilation & wrapper files
+├── bin/                        # Compilation & wrapper files
 ├── src/
 │   ├── main/
-│   │   ├── java/
-│   │   │   └── com/
-│   │   │       └── suveer/
-│   │   │           └── demo/
-│   │   │               ├── DemoApplication.java   # Main application entry point
-│   │   │               ├── repository/            # Repository classes
-│   │   │               ├── model/                 # Model classes
-│   │   │               ├── Controller.java        # Example controller
-│   │   │               └── Service.java           # Example service
-│   │   └── resources/
-│   │       └── templates/                          # HTML or template files
-│   └── test/
-│       └── java/
-│           └── com/
-│               └── suveer/
-│                   └── demo/                       # Test files
-├── target/                                        # Compiled classes & build artifacts
-├── .mvn/                                          # Maven wrapper
-├── .git/                                          # Git repository
-├── .settings/                                     # IDE settings
-├── pom.xml                                        # Maven project file
-└── README.md                                      # Project documentation
+│   │   ├── java/com/suveer/demo/
+│   │   │   ├── DemoApplication.java
+│   │   │   ├── repository/
+│   │   │   ├── model/
+│   │   │   ├── Controller.java
+│   │   │   └── Service.java
+│   │   └── resources/templates/
+│   └── test/java/com/suveer/demo/
+├── target/                      # Compiled classes & build artifacts
+├── .mvn/                        # Maven wrapper
+├── .git/                        # Git repository
+├── .settings/                   # IDE settings
+├── pom.xml                      # Maven project file
+└── README.md                    # Project documentation
 ```
 
 ---
 
-## Run the Application
+### Run the Application
 
-To run the project, you **must execute the main application file**:
+#### 1. Using Maven (Recommended)
 
-```bash
-src/main/java/com/suveer/demo/DemoApplication.java
-```
-
-You can do this in two ways:
-
-### 1. Using Maven (Recommended)
-
-From the root of the project directory:
+From the root of the project:
 
 ```bash
 mvn spring-boot:run
 ```
 
-Maven will automatically compile the project and run `DemoApplication.java`.
+> The application runs on **port 9090** by default.
 
-> **Note:** The application is configured to run on **port 9090**.
-
-### 2. Running Directly
-
-Navigate to the main package:
+#### 2. Running Directly
 
 ```bash
 cd src/main/java/com/suveer/demo
-```
-
-Compile the Java file:
-
-```bash
 javac DemoApplication.java
-```
-
-Run the application:
-
-```bash
 java DemoApplication
 ```
 
-> **Mac Users:** Ensure your terminal has Java JDK correctly configured. You may need to set `JAVA_HOME`:
+> **Mac Users:** Ensure `JAVA_HOME` is set:
 >
 > ```bash
 > export JAVA_HOME=$(/usr/libexec/java_home)
@@ -153,9 +109,9 @@ java DemoApplication
 
 ---
 
-## Access the Application
+### Access the Application
 
-Once the application is running, open your web browser and visit:
+Open your browser and go to:  
 
 ```
 http://localhost:9090
@@ -165,11 +121,8 @@ You should see the application responding to requests.
 
 ---
 
-## Author
+### Author
 
-**Suveer Upasani**
-Contact: 9423043271
-GitHub: [https://github.com/Suveer-Upasani](https://github.com/Suveer-Upasani)
-
-```
-
+**Suveer Upasani**  
+Contact: 9423043271  
+GitHub: [Suveer-Upasani](https://github.com/Suveer-Upasani)
