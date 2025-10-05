@@ -1,3 +1,15 @@
+
+
+# Read Me Format
+
+**Team Name:** VisionForge
+**Team members name:** Suveer K Upasani, Parth Paygude, Ansh Bhingardive, Ashitosh Lavhate
+**Project name:** Customizable and scalable API enabling institutions to conduct proctored online exams with ease and reliability.
+**Project abstract:** A robust, scalable, and fully customizable API engineered to power proctor-based online examination systems, delivering secure, flexible, and highly efficient exam management while ensuring seamless integration, adaptability to diverse exam formats, and a smooth experience for both administrators and candidates.
+**Tech stack:** Python, Mediapipe, Flask, Java (Spring Boot), HTML, CSS, JS
+
+---
+
 # Java Spring Boot Project
 
 A Java Spring Boot project built for demonstration purposes. This guide explains how to clone the repository and run the main application.
@@ -6,12 +18,12 @@ A Java Spring Boot project built for demonstration purposes. This guide explains
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)  
-2. [Clone Repository](#clone-repository)  
-3. [Project Structure](#project-structure)  
-4. [Run the Application](#run-the-application)  
-5. [Access the Application](#access-the-application)  
-6. [Author](#author)  
+1. [Prerequisites](#prerequisites)
+2. [Clone Repository](#clone-repository)
+3. [Project Structure](#project-structure)
+4. [Run the Application](#run-the-application)
+5. [Access the Application](#access-the-application)
+6. [Author](#author)
 
 ---
 
@@ -19,9 +31,9 @@ A Java Spring Boot project built for demonstration purposes. This guide explains
 
 Before running the project, make sure you have the following installed:
 
-- **Java JDK** (version 8 or above)  
-- **Maven** (for building and running the project)  
-- **IDE** such as IntelliJ IDEA, Eclipse, or VS Code (optional)  
+* **Java JDK** (version 8 or above)
+* **Maven** (for building and running the project)
+* **IDE** such as IntelliJ IDEA, Eclipse, or VS Code (optional)
 
 ---
 
@@ -96,7 +108,8 @@ From the root of the project directory:
 mvn spring-boot:run
 ```
 
-Maven will automatically compile the project and run `DemoApplication.java`.  
+Maven will automatically compile the project and run `DemoApplication.java`.
+
 > **Note:** The application is configured to run on **port 9090**.
 
 ### 2. Running Directly
@@ -141,6 +154,7 @@ You should see the application responding to requests.
 
 ## Author
 
-**Suveer Upasani**  
-Contact: 9423043271  
+**Suveer Upasani**
+Contact: 9423043271
 GitHub: [https://github.com/Suveer-Upasani](https://github.com/Suveer-Upasani)
+
