@@ -1,5 +1,6 @@
+Here’s your **updated README** with the video and image embedded properly from your GitHub links:
 
-
+````markdown
 # Read Me Format
 
 **Team Name:** VisionForge
@@ -11,6 +12,14 @@
 **Project abstract:** A robust, scalable, and fully customizable API engineered to power proctor-based online examination systems, delivering secure, flexible, and highly efficient exam management while ensuring seamless integration, adaptability to diverse exam formats, and a smooth experience for both administrators and candidates.
 
 **Tech stack:** Python, Mediapipe, Flask, Java (Spring Boot), HTML, CSS, JS
+
+---
+
+# Demo Video
+
+[![Watch the Demo](https://github.com/Suveer-Upasani/VisionForge/blob/main/Flow.jpeg)](https://github.com/Suveer-Upasani/VisionForge/blob/main/Demo.mp4)
+
+*Click on the image to play the demo video.*
 
 ---
 
@@ -47,7 +56,7 @@ To get a copy of the project, run the following command in your terminal:
 
 ```bash
 git clone https://github.com/Suveer-Upasani/Java_Project.git
-```
+````
 
 Navigate into the project directory:
 
@@ -161,4 +170,6 @@ You should see the application responding to requests.
 **Suveer Upasani**
 Contact: 9423043271
 GitHub: [https://github.com/Suveer-Upasani](https://github.com/Suveer-Upasani)
+
+```
 
