@@ -3,9 +3,13 @@
 # Read Me Format
 
 **Team Name:** VisionForge
+
 **Team members name:** Suveer K Upasani, Parth Paygude, Ansh Bhingardive, Ashitosh Lavhate
+
 **Project name:** Customizable and scalable API enabling institutions to conduct proctored online exams with ease and reliability.
+
 **Project abstract:** A robust, scalable, and fully customizable API engineered to power proctor-based online examination systems, delivering secure, flexible, and highly efficient exam management while ensuring seamless integration, adaptability to diverse exam formats, and a smooth experience for both administrators and candidates.
+
 **Tech stack:** Python, Mediapipe, Flask, Java (Spring Boot), HTML, CSS, JS
 
 ---
